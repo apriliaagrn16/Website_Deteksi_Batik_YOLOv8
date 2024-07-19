@@ -43,10 +43,10 @@ if selected == "Home":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.image("images\hasildetek.jpg", caption="Overview Image", use_column_width=True)
+        st.image("images/hasildetek.jpg", caption="Overview Image", use_column_width=True)
         
     with col2:
-        st.image("images\Batikcoba1.jpeg", caption="Overview webcam", use_column_width=True)
+        st.image("images/Batikcoba1.jpeg", caption="Overview webcam", use_column_width=True)
 
 elif selected == "Detection":
     st.sidebar.header("ML Model Config")
