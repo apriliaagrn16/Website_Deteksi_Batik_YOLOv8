@@ -3,3 +3,4 @@ opencv-python-headless==4.9.0.80
 ultralytics==8.2.16
 pillow==10.2.0
 streamlit-option-menu==0.3.12
+streamlit-webrtc==0.47.6
