@@ -2,14 +2,16 @@
 from pathlib import Path
 import PIL
 
-
 # External packages
 import streamlit as st
+import av
+import cv2  # Make sure to import OpenCV
 from streamlit_option_menu import option_menu
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
 
 # Local Modules
 import settings
+from ultralytics import YOLO
 import helper
 
 # Setting page layout
@@ -112,13 +114,31 @@ elif selected == "Detection":
         # Define the VideoTransformer class
         class VideoTransformer(VideoProcessorBase):
             def __init__(self):
-                self.confidence = confidence
+                self.model = YOLO(settings.DETECTION_MODEL)
+                self.confidence = 0.3
             
-            def recv(self, frame):
+            def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
                 img = frame.to_ndarray(format="bgr24")
-                result = model.predict(img, conf=self.confidence)
-                result_img = result[0].plot()[:, :, ::-1]
-                return av.VideoFrame.from_ndarray(result_img, format="bgr24")
+        
+                # Perform object detection
+                results = self.model(img)
+                st.write("Results obtained")  # Debugging line
+                
+                # Draw bounding boxes on the frame
+                for r in results:
+                    boxes = r.boxes
+                    for box in boxes:
+                        b = box.xyxy[0].cpu().numpy()  # get box coordinates in (top, left, bottom, right) format
+                        c = box.cls
+                        conf = box.conf.item()
+                        if conf >= self.confidence:
+                            x1, y1, x2, y2 = map(int, b)
+                            label = f"{self.model.names[int(c)]} {conf:.2f}"
+                            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                            cv2.putText(img, label, (x1, y1 - 10),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
 
         webrtc_ctx = webrtc_streamer(
             key="object-detection",
