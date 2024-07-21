@@ -6,6 +6,7 @@ import PIL
 # External packages
 import streamlit as st
 from streamlit_option_menu import option_menu
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
 
 # Local Modules
 import settings
@@ -43,10 +44,10 @@ if selected == "Home":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.image("images/hasildetek.jpg", caption="Overview Image", use_column_width=True)
+        st.image("images\hasildetek.jpg", caption="Overview Image", use_column_width=True)
         
     with col2:
-        st.image("images/Batikcoba1.jpeg", caption="Overview webcam", use_column_width=True)
+        st.image("images\Batikcoba1.jpeg", caption="Overview webcam", use_column_width=True)
 
 elif selected == "Detection":
     st.sidebar.header("ML Model Config")
@@ -106,7 +107,31 @@ elif selected == "Detection":
         helper.play_stored_video(confidence, model)
 
     elif source_radio == settings.WEBCAM:
-        helper.play_webcam(confidence, model)
+        st.header("WebRTC Object Detection")
+        
+        # Define the VideoTransformer class
+        class VideoTransformer(VideoProcessorBase):
+            def __init__(self):
+                self.confidence = confidence
+            
+            def recv(self, frame):
+                img = frame.to_ndarray(format="bgr24")
+                result = model.predict(img, conf=self.confidence)
+                result_img = result[0].plot()[:, :, ::-1]
+                return av.VideoFrame.from_ndarray(result_img, format="bgr24")
+
+        webrtc_ctx = webrtc_streamer(
+            key="object-detection",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
+            video_processor_factory=VideoTransformer,
+            async_processing=True,
+        )
+
+        if webrtc_ctx.video_processor:
+            webrtc_ctx.video_processor.confidence = confidence
+        else:
+            st.error("Please select a valid source type!")
 
     else:
         st.error("Please select a valid source type!")
